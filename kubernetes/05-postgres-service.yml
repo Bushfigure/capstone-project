@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: capstone-db
+  namespace: capstone
+spec:
+  selector:
+    app: capstone-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+  clusterIP: None   # headless for stable DNS

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: capstone-config
+  namespace: capstone
+data:
+  DB_HOST: capstone-db
+  DB_PORT: "5432"
+  PORT: "3000"
+  NODE_ENV: production
