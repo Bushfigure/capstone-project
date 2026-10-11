@@ -1,0 +1,16 @@
+---
+- name: Configure app servers for capstone application
+  hosts: app_servers
+  become: "{{ ansible_connection != 'local' }}"
+  gather_facts: true
+
+  roles:
+    - role: docker
+      tags: [docker]
+    - role: app-server
+      tags: [app]
+
+  post_tasks:
+    - name: Print completion message
+      ansible.builtin.debug:
+        msg: "✅ Capstone app server configured on {{ inventory_hostname }}"

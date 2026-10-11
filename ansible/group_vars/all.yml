@@ -1,0 +1,14 @@
+---
+project_name: capstone
+app_port: 3000
+app_user: capstone
+app_image: capstone-app:local
+docker_packages:
+  - docker.io
+app_env_vars:
+  NODE_ENV: production
+  PORT: "{{ app_port }}"
+  DB_HOST: capstone-db
+  DB_PORT: "5432"
+  DB_USER: appuser
+  DB_NAME: appdb

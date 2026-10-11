@@ -1,0 +1,4 @@
+---
+- name: App config changed
+  ansible.builtin.debug:
+    msg: "App env file was regenerated — a real deploy would restart the app container here"
