@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const { pool, initDb } = require('./db');
 const { register, httpRequestCounter, visitCounter } = require('./metrics');
@@ -20,29 +21,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Root — frontend-ish landing
-app.get('/', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT COUNT(*) FROM visits');
-    const count = result.rows[0].count;
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head><title>DevOps Capstone</title></head>
-        <body style="font-family: sans-serif; text-align:center; padding:50px;">
-          <h1>DevOps Capstone App</h1>
-          <p>Node.js + PostgreSQL running on Kubernetes</p>
-          <p><strong>Total visits:</strong> ${count}</p>
-          <button onclick="fetch('/api/visit',{method:'POST'}).then(()=>location.reload())">
-            Record a visit
-          </button>
-        </body>
-      </html>
-    `);
-  } catch (err) {
-    res.status(500).send('Database error: ' + err.message);
-  }
-});
+// Serve static frontend from ./public
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Record a visit
 app.post('/api/visit', async (req, res) => {
@@ -55,10 +35,14 @@ app.post('/api/visit', async (req, res) => {
   }
 });
 
-// List visits
+// List visits (frontend counts the array length)
 app.get('/api/visits', async (req, res) => {
-  const result = await pool.query('SELECT * FROM visits ORDER BY id DESC LIMIT 20');
-  res.json(result.rows);
+  try {
+    const result = await pool.query('SELECT * FROM visits ORDER BY id DESC LIMIT 100');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Health endpoints

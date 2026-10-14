@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DevOps Capstone App</title>
+<style>
+  :root {
+    --bg: #f4f6fb; --card: #ffffff; --text: #0f172a; --muted: #64748b;
+    --accent: #6366f1; --accent-hover: #4f46e5; --ok: #16a34a; --err: #dc2626;
+    --border: #e2e8f0; --shadow: 0 10px 30px rgba(15, 23, 42, .08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1020; --card: #131a2e; --text: #e8ecf8; --muted: #94a3b8;
+      --border: #243049; --shadow: 0 10px 30px rgba(0, 0, 0, .4);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(circle at 20% 0%, rgba(99,102,241,.15), transparent 40%), var(--bg);
+    color: var(--text);
+  }
+  .card {
+    width: 100%; max-width: 440px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; box-shadow: var(--shadow); padding: 36px 32px; text-align: center;
+  }
+  h1 { margin: 0 0 6px; font-size: 1.6rem; letter-spacing: -.02em; }
+  .subtitle { margin: 0 0 24px; color: var(--muted); font-size: .95rem; }
+  .badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 28px; }
+  .badge {
+    font-size: .75rem; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--muted);
+  }
+  .label { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .1em; }
+  .count { font-size: 4rem; font-weight: 800; line-height: 1.1; margin: 4px 0 24px; font-variant-numeric: tabular-nums; }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 12px;
+    padding: 12px 28px; font-size: 1rem; font-weight: 600; cursor: pointer;
+    transition: background .15s, transform .1s;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button:active:not(:disabled) { transform: scale(.97); }
+  button:disabled { opacity: .6; cursor: not-allowed; }
+  .status { margin-top: 18px; font-size: .85rem; min-height: 1.2em; color: var(--muted); }
+  .status.ok { color: var(--ok); } .status.err { color: var(--err); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
+  .dot.ok { background: var(--ok); } .dot.err { background: var(--err); }
+  .history { margin: 24px 0 0; padding: 0; list-style: none; text-align: left; font-size: .85rem; color: var(--muted); }
+  .history li { padding: 8px 0; border-top: 1px solid var(--border); display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1>DevOps Capstone App</h1>
+    <p class="subtitle">Node.js + PostgreSQL running on Kubernetes</p>
+
+    <div class="badges">
+      <span class="badge">Node.js</span>
+      <span class="badge">PostgreSQL</span>
+      <span class="badge">Kubernetes</span>
+    </div>
+
+    <div class="label">Total visits</div>
+    <div class="count" id="count" aria-live="polite">–</div>
+
+    <button id="btn" type="button">Record a visit</button>
+
+    <div class="status" id="status"><span class="dot" id="dot"></span><span id="statusText">Connecting…</span></div>
+
+    <ul class="history" id="history" aria-label="Your recent visits"></ul>
+  </main>
+
+<script>
+  // ---- Configure to match our backend ----
+  const LIST_URL = "/api/visits";      // GET  -> [{id, visited_at}, ...]
+  const RECORD_URL = "/api/visit";     // POST -> { status: "ok" }
+  const REFRESH_MS = 10000;
+  // ----------------------------------------
+
+  const $ = (id) => document.getElementById(id);
+  const countEl = $("count"), btn = $("btn"), dot = $("dot"),
+        statusText = $("statusText"), statusBox = $("status"), historyEl = $("history");
+
+  let shown = 0;
+
+  // Backend returns an array of visits. Count = length.
+  function extractCount(data) {
+    if (Array.isArray(data)) return data.length;
+    if (typeof data === "number") return data;
+    for (const k of ["count", "total", "visits", "totalVisits"]) {
+      if (data && data[k] !== undefined) return Number(data[k]);
+    }
+    throw new Error("Unexpected API response");
+  }
+
+  function animateTo(target) {
+    const start = shown, diff = target - start, t0 = performance.now(), dur = 500;
+    if (diff === 0) { countEl.textContent = target.toLocaleString(); return; }
+    (function step(now) {
+      const p = Math.min((now - t0) / dur, 1);
+      shown = Math.round(start + diff * (1 - Math.pow(1 - p, 3)));
+      countEl.textContent = shown.toLocaleString();
+      if (p < 1) requestAnimationFrame(step);
+    })(t0);
+  }
+
+  function setStatus(kind, text) {
+    dot.className = "dot " + kind;
+    statusBox.className = "status " + kind;
+    statusText.textContent = text;
+  }
+
+  async function load() {
+    try {
+      const res = await fetch(LIST_URL, { headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error("Server responded " + res.status);
+      const data = await res.json();
+      animateTo(extractCount(data));
+      setStatus("ok", "Connected · updated " + new Date().toLocaleTimeString());
+    } catch (e) {
+      setStatus("err", "Can't reach the API: " + e.message);
+    }
+  }
+
+  async function record() {
+    btn.disabled = true; btn.textContent = "Recording…";
+    try {
+      const res = await fetch(RECORD_URL, { method: "POST", headers: { "Content-Type": "application/json" } });
+      if (!res.ok) throw new Error("Server responded " + res.status);
+      await load();
+      const li = document.createElement("li");
+      li.innerHTML = "<span>Visit recorded</span><span>" + new Date().toLocaleTimeString() + "</span>";
+      historyEl.prepend(li);
+      while (historyEl.children.length > 5) historyEl.lastChild.remove();
+      setStatus("ok", "Visit recorded ✔");
+    } catch (e) {
+      setStatus("err", "Failed to record visit: " + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = "Record a visit";
+    }
+  }
+
+  btn.addEventListener("click", record);
+  load();
+  setInterval(load, REFRESH_MS);
+</script>
+</body>
+</html>

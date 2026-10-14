@@ -22,8 +22,8 @@ spec:
     spec:
       containers:
         - name: app
-          image: duke756/capstone-app:latest
-          imagePullPolicy: Always
+          image: capstone-app:local
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
           envFrom:
