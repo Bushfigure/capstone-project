@@ -24,3 +24,12 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Downloaded installers
+kubectl
+minikube-linux-amd64
+*-installer
+
+# Downloaded installers
+kubectl
+minikube-linux-amd64

@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+data:
+  alerts.yml: |
+    groups:
+      - name: capstone-app-alerts
+        interval: 30s
+        rules:
+          # ALERT 1: App pod down
+          - alert: CapstoneAppDown
+            expr: up{job="capstone-app"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Capstone app instance is down"
+              description: "{{ $labels.pod }} has been down for more than 1 minute."
+
+          # ALERT 2: High request rate
+          - alert: CapstoneAppHighRequestRate
+            expr: rate(app_http_requests_total[5m]) > 10
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High HTTP request rate on capstone app"
+              description: "Request rate is {{ $value }} req/s over the last 5 minutes."
+
+          # ALERT 3: High memory usage
+          - alert: CapstoneAppHighMemory
+            expr: |
+              sum(container_memory_working_set_bytes{namespace="capstone", pod=~"capstone-app-.*"})
+              /
+              sum(kube_pod_container_resource_limits{namespace="capstone", pod=~"capstone-app-.*", resource="memory"}) > 0.8
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Capstone app memory usage above 80%"
